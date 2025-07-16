@@ -1,0 +1,282 @@
+{
+  "name": "ADX_RSI",
+  "nodes": [
+    {
+      "parameters": {
+        "url": "https://main.icharts.in/includes/screener/EODScan.php?export=1",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "user-agent",
+              "value": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Safari/537.36 Edg/138.0.0.0"
+            }
+          ]
+        },
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "file"
+            }
+          }
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        224,
+        0
+      ],
+      "id": "7a368b90-cdfa-411a-add6-985b8e0a3078",
+      "name": "Ichart_download",
+      "retryOnFail": true,
+      "maxTries": 5
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "1 30 17 * * 1-5"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        0,
+        0
+      ],
+      "id": "af9ceff4-049a-4154-a4d5-022bf7bee1bc",
+      "name": "Schedule Trigger"
+    },
+    {
+      "parameters": {
+        "options": {
+          "delimiter": ",",
+          "headerRow": true
+        }
+      },
+      "type": "n8n-nodes-base.extractFromFile",
+      "typeVersion": 1,
+      "position": [
+        448,
+        0
+      ],
+      "id": "02868a91-a4ce-4d18-99e9-3b92c5d13d08",
+      "name": "File filter Process"
+    },
+    {
+      "parameters": {
+        "jsCode": "return items.map(item => {\n  const data = item.json;\n\n  // Convert fields to numbers\n  data.avg_volume = parseFloat(data.avg_volume);\n  data.adx = parseFloat(data.adx);\n  data.dmi_plus = parseFloat(data.dmi_plus);\n  data.rsi = parseFloat(data.rsi);\n\n  return { json: data };\n});\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        672,
+        0
+      ],
+      "id": "8ea9862b-8644-49be-88ac-5556be0b026b",
+      "name": "Code"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "9fb61137-d0c1-48ce-bce6-b4ddb334b6a3",
+              "leftValue": "={{ $json.adx }}",
+              "rightValue": 25,
+              "operator": {
+                "type": "number",
+                "operation": "gte"
+              }
+            },
+            {
+              "id": "f8aa8868-3b05-4acd-9c6e-0fd6dc07a7e0",
+              "leftValue": "={{ $json.dmi_plus }}",
+              "rightValue": 10,
+              "operator": {
+                "type": "number",
+                "operation": "gt"
+              }
+            },
+            {
+              "id": "75d9ec2f-038e-4de6-8bf1-ef0432459fa2",
+              "leftValue": "={{ $json.rsi }}",
+              "rightValue": 30,
+              "operator": {
+                "type": "number",
+                "operation": "lt"
+              }
+            },
+            {
+              "id": "8807a524-189f-4b3e-a23e-4371f8b774e1",
+              "leftValue": "={{ $json.avg_volume }}",
+              "rightValue": 200000,
+              "operator": {
+                "type": "number",
+                "operation": "gte"
+              }
+            },
+            {
+              "id": "f6a65c27-3135-48f2-8a8f-1015a4839958",
+              "leftValue": "={{ $json.p_symbol }}",
+              "rightValue": "-1M",
+              "operator": {
+                "type": "string",
+                "operation": "notContains"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "looseTypeValidation": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        880,
+        0
+      ],
+      "id": "b83ed0e0-34ac-4aaa-bf9a-ef7b23e8fba4",
+      "name": "csvData",
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "options": {
+          "delimiter": ",",
+          "fileName": "ASI_RSI.csv"
+        }
+      },
+      "type": "n8n-nodes-base.convertToFile",
+      "typeVersion": 1.1,
+      "position": [
+        1104,
+        -96
+      ],
+      "id": "774af08c-84de-4520-a0a1-79833c2e039c",
+      "name": "filtered to CSV",
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "operation": "sendDocument",
+        "chatId": "995885307",
+        "binaryData": true,
+        "additionalFields": {
+          "caption": "Here’s your ADX_RSI screener CSV 📊",
+          "fileName": "ADX_RSI.csv"
+        }
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        1312,
+        -96
+      ],
+      "id": "e8dbaf79-3359-482e-adec-6d89e227ff6d",
+      "name": "Send a document1",
+      "webhookId": "a066361d-9656-4d61-942e-558d96b70439",
+      "executeOnce": false,
+      "credentials": {
+        "telegramApi": {
+          "id": "qXHUJnd9voILCKo3",
+          "name": "Telegram account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "Ichart_download",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Ichart_download": {
+      "main": [
+        [
+          {
+            "node": "File filter Process",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "File filter Process": {
+      "main": [
+        [
+          {
+            "node": "Code",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code": {
+      "main": [
+        [
+          {
+            "node": "csvData",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "csvData": {
+      "main": [
+        [
+          {
+            "node": "filtered to CSV",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "filtered to CSV": {
+      "main": [
+        [
+          {
+            "node": "Send a document1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "timezone": "Asia/Kolkata",
+    "callerPolicy": "workflowsFromSameOwner"
+  },
+  "versionId": "9d56b623-6a4d-44e4-a3b9-61d33e62a442",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "29457d6a183b49626c70647c80cf3b0a8629949757e4b29b13aacb2966edab0b"
+  },
+  "id": "UJTpqkJnmgH10Wxk",
+  "tags": []
+}

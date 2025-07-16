@@ -1,0 +1,290 @@
+{
+  "name": "MACD_Crossover",
+  "nodes": [
+    {
+      "parameters": {
+        "url": "https://main.icharts.in/includes/screener/EODScan.php?export=1",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "user-agent",
+              "value": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Safari/537.36 Edg/138.0.0.0"
+            }
+          ]
+        },
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "file"
+            }
+          }
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        224,
+        0
+      ],
+      "id": "4a080555-83c5-44c3-ab0e-1b40f91cf637",
+      "name": "Ichart_download",
+      "retryOnFail": true,
+      "maxTries": 5
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "2 30 17 * * 1-5"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        0,
+        0
+      ],
+      "id": "e4edeab3-38a4-4138-b0cb-b3c2bebcbacb",
+      "name": "Schedule Trigger"
+    },
+    {
+      "parameters": {
+        "options": {
+          "delimiter": ",",
+          "headerRow": true
+        }
+      },
+      "type": "n8n-nodes-base.extractFromFile",
+      "typeVersion": 1,
+      "position": [
+        448,
+        0
+      ],
+      "id": "a29e7211-aa4f-40bb-8562-dd249b613962",
+      "name": "File filter Process"
+    },
+    {
+      "parameters": {
+        "jsCode": "return items.map(item => {\n  const data = item.json;\n\n  // Convert fields to numbers\n  data.avg_volume = parseFloat(data.avg_volume);\n  data.adx = parseFloat(data.adx);\n  data.dmi_plus = parseFloat(data.dmi_plus);\n  data.rsi = parseFloat(data.rsi);\n  data.macd = parseFloat(data.macd);\n  data.macd_signal = parseFloat(data.macd_signal);\n\n  return { json: data };\n});\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        672,
+        0
+      ],
+      "id": "c954554a-f428-49bd-8846-58b42456d3b5",
+      "name": "Code"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "9fb61137-d0c1-48ce-bce6-b4ddb334b6a3",
+              "leftValue": "={{ $json.macd }}",
+              "rightValue": 0,
+              "operator": {
+                "type": "number",
+                "operation": "lte"
+              }
+            },
+            {
+              "id": "f8aa8868-3b05-4acd-9c6e-0fd6dc07a7e0",
+              "leftValue": "={{ $json.macd_signal }}",
+              "rightValue": 0,
+              "operator": {
+                "type": "number",
+                "operation": "lte"
+              }
+            },
+            {
+              "id": "132c65e2-fd86-4464-bdf0-1385b51b507b",
+              "leftValue": "={{ $json.macd - $json.macd_signal }}",
+              "rightValue": 0,
+              "operator": {
+                "type": "number",
+                "operation": "gt"
+              }
+            },
+            {
+              "id": "75d9ec2f-038e-4de6-8bf1-ef0432459fa2",
+              "leftValue": "={{ $json.rsi }}",
+              "rightValue": 30,
+              "operator": {
+                "type": "number",
+                "operation": "lt"
+              }
+            },
+            {
+              "id": "8807a524-189f-4b3e-a23e-4371f8b774e1",
+              "leftValue": "={{ $json.avg_volume }}",
+              "rightValue": 200000,
+              "operator": {
+                "type": "number",
+                "operation": "gte"
+              }
+            },
+            {
+              "id": "f6a65c27-3135-48f2-8a8f-1015a4839958",
+              "leftValue": "={{ $json.p_symbol }}",
+              "rightValue": "-1M",
+              "operator": {
+                "type": "string",
+                "operation": "notContains"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "looseTypeValidation": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        880,
+        0
+      ],
+      "id": "34f8b169-2197-4e9e-a88c-201d38cf7dd4",
+      "name": "csvData",
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "operation": "sendDocument",
+        "chatId": "995885307",
+        "binaryData": true,
+        "additionalFields": {
+          "caption": "Here’s your MACD screener CSV 📊",
+          "fileName": "MACD.csv"
+        }
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        1264,
+        -96
+      ],
+      "id": "81de4297-79ab-4367-a3c2-88a922c7f764",
+      "name": "Send a document1",
+      "webhookId": "9bd2e1c9-666e-4654-86b7-9d7719d332bf",
+      "credentials": {
+        "telegramApi": {
+          "id": "qXHUJnd9voILCKo3",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "options": {
+          "delimiter": ",",
+          "fileName": "MACD_Scanner.csv"
+        }
+      },
+      "type": "n8n-nodes-base.convertToFile",
+      "typeVersion": 1.1,
+      "position": [
+        1104,
+        -96
+      ],
+      "id": "015f1fc5-2878-4eca-90bc-d50ec2ba5ace",
+      "name": "Convert to File",
+      "alwaysOutputData": true
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "Ichart_download",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Ichart_download": {
+      "main": [
+        [
+          {
+            "node": "File filter Process",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "File filter Process": {
+      "main": [
+        [
+          {
+            "node": "Code",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code": {
+      "main": [
+        [
+          {
+            "node": "csvData",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "csvData": {
+      "main": [
+        [
+          {
+            "node": "Convert to File",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Convert to File": {
+      "main": [
+        [
+          {
+            "node": "Send a document1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "timezone": "Asia/Kolkata",
+    "callerPolicy": "workflowsFromSameOwner"
+  },
+  "versionId": "1accacc2-7704-4429-962f-fd8884adfe2d",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "29457d6a183b49626c70647c80cf3b0a8629949757e4b29b13aacb2966edab0b"
+  },
+  "id": "6sSNEoW76lSAxDPY",
+  "tags": []
+}
